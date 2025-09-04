@@ -1,0 +1,29 @@
+to run the app locally:
+
+create 2 terminals
+
+1 - for client
+2 - for server
+
+For Client:
+
+cd client/phillexbot
+npm run dev 
+
+For Server:
+(have docker first)
+docker run -p 6333:6333 qdrant/qdrant
+
+at the root folder -> .\venv\Scripts\Activate.ps1
+
+python -m server.server
+
+
+Note when installing libraries use:
+
+.\venv\Scripts\Activate.ps1
+python -m pip install <library>
+
+Once testing is implemented:
+
+- Include below the steps and commands to run
