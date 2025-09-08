@@ -10,13 +10,14 @@ from server.modules.pii_sanitizer import PIISanitizer
 from server.modules.pdf_text_extractor import extract_text_from_pdf  # <-- import module
 from server.modules.pdf_chunker import chunk_pdf_with_semantic       # new chunker module
 from server.modules.embed_text import embed_texts
-from server.modules.upload_qdrant import upload
+from server.modules.upload_qdrant import upload, query
 
 # from transformers import AutoTokenizer, AutoModel
 # from langchain_experimental.text_splitter import SemanticChunker
 # from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
-
+model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:3001"])
@@ -26,11 +27,17 @@ sessions = {}
 # tokenizer = AutoTokenizer.from_pretrained("roberta-base")
 # embedding_model = HuggingFaceEmbeddings(model_name="roberta-base")
 
-client = QdrantClient(host="localhost", port=6333)
+client = QdrantClient(
+    url="https://4a6f24fc-8fce-4921-bc8d-c3f533294e90.europe-west3-0.gcp.cloud.qdrant.io",  
+    api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.bMlOchp7JkGWmzEcs5HC7h7em8k1U3c_MBuFUF1f_7M",  
+)
+
 client.recreate_collection(
     collection_name="legal_docs",
-    vectors_config=VectorParams(size=768, distance=Distance.COSINE)
+    vectors_config=VectorParams(size=384, distance=Distance.COSINE)
 )
+
+sanitizer = PIISanitizer()  # initialize sanitizer once
 
 @app.route("/")
 def home():
@@ -66,7 +73,7 @@ def upload_pdf():
     page_texts = extract_text_from_pdf(pdf_bytes)
     print("text extracted from PDF")
     # Sanitize
-    sanitizer = PIISanitizer()  # initialize sanitizer once
+    
     sanitized_pages = []
     for page in page_texts:
         masked_text, mask_map = sanitizer.sanitize(page["text"])
@@ -78,11 +85,11 @@ def upload_pdf():
 
     print("text sanitized")
 
-    chunks = chunk_pdf_with_semantic(sanitized_pages, sanitizer=sanitizer)  # embedding_model
+    chunks = chunk_pdf_with_semantic(sanitized_pages)  # embedding_model
 
     print("text chunked")
 
-    chunks = embed_texts(chunks)  # embedding_model
+    chunks = embed_texts(chunks, model)  # embedding_model
 
     print("text embedded")
 
@@ -98,7 +105,7 @@ def upload_pdf():
     return jsonify({
         "status": "ok",
         "pages": len(page_texts),
-        # "chunks": len(chunks)
+        "chunks": [chunk["text"] for chunk in chunks]
     })
 
 @app.route("/chat", methods=["POST"])
@@ -109,6 +116,18 @@ def chat():
 
     data = request.json
     message = data.get("message")
+    # sanitize first the user input
+
+    sanitized_message, _ = sanitizer.sanitize(message)
+    print("sanitized user message:", sanitized_message)
+    # embed
+    embeded_message = embed_texts([{"text": sanitized_message}], model)[0]["embedding"]
+    print("embedded user message")
+    # query
+    results = query(client, embeded_message)
+    print("queried Qdrant:", results)
+
+    # generate response (mocked here)
 
     sessions[session_id]["chat"].append({"role": "user", "content": message})
 

@@ -6,6 +6,9 @@ class PIISanitizer:
     def __init__(self):
         self.analyzer = AnalyzerEngine()
         self.anonymizer = AnonymizerEngine()
+        self.mask_map = {}
+        self.reverse_map = {}
+        self.counters = {}
 
     def sanitize(self, text: str):
         """
@@ -13,16 +16,14 @@ class PIISanitizer:
         """
         results = self.analyzer.analyze(text=text, language="en")
 
-        mask_map = {}
-        reverse_map = {}
-        counters = {}
+        
 
         def custom_replacement(entity_type, original_text):
-            counters.setdefault(entity_type, 1)
-            key = f"{entity_type}_{counters[entity_type]}"
-            counters[entity_type] += 1
-            mask_map[key] = original_text
-            reverse_map[original_text] = key
+            self.counters.setdefault(entity_type, 1)
+            key = f"{entity_type}_{self.counters[entity_type]}"
+            self.counters[entity_type] += 1
+            self.mask_map[key] = original_text
+            self.reverse_map[original_text] = key
             return f"[{key}]"
 
         masked = text
@@ -30,13 +31,13 @@ class PIISanitizer:
             original = text[r.start:r.end]
             masked = masked.replace(original, custom_replacement(r.entity_type, original))
 
-        return masked, mask_map
+        return masked, self.mask_map
 
-    def restore(self, masked_text: str, mask_map: dict):
+    def restore(self, masked_text: str):
         """
         Restore masked text using mask_map.
         """
         restored = masked_text
-        for key, original in mask_map.items():
+        for key, original in self.mask_map.items():
             restored = restored.replace(f"[{key}]", original)
         return restored

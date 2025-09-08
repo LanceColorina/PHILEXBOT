@@ -11,8 +11,6 @@ cd client/phillexbot
 npm run dev 
 
 For Server:
-(have docker first)
-docker run -p 6333:6333 qdrant/qdrant
 
 at the root folder -> .\venv\Scripts\Activate.ps1
 

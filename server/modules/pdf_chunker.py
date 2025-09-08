@@ -1,9 +1,8 @@
 # pdf_chunker.py
 from langchain_experimental.text_splitter import SemanticChunker
-from server.modules.pii_sanitizer import PIISanitizer
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-def chunk_pdf_with_semantic(page_texts, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", chunk_method="Semantic", sanitizer: PIISanitizer = PIISanitizer()):
+def chunk_pdf_with_semantic(page_texts, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", chunk_method="Semantic"):
     """
     Splits PDF text into semantically meaningful chunks and sanitizes PII.
 
@@ -22,11 +21,9 @@ def chunk_pdf_with_semantic(page_texts, embedding_model: str = "sentence-transfo
     chunker = SemanticChunker(model)
 
     for page_data in page_texts:
-        # sanitize PII
-        sanitized_text, mask_map = sanitizer.sanitize(page_data["text"])
 
         # split into semantic chunks
-        semantic_chunks = chunker.create_documents([sanitized_text])
+        semantic_chunks = chunker.create_documents(page_data["text"])
 
         for doc in semantic_chunks:
             chunk_text = doc.page_content
@@ -37,7 +34,6 @@ def chunk_pdf_with_semantic(page_texts, embedding_model: str = "sentence-transfo
                 "tokens": len(chunk_text.split()),  # rough token count
                 "page": page_data["page"],
                 "position_label": f"{chunk_method} {chunk_id + 1} (Page {page_data['page']})",
-                "mask_map": mask_map
             })
             chunk_id += 1
 
