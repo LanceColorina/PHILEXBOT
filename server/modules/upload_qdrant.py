@@ -19,7 +19,7 @@ def upload(chunks: list[dict], client: QdrantClient, collection_name: str = "leg
         )
     return True
 
-def query(client:QdrantClient):
+def query(client:QdrantClient, query_embedding: str):
     return client.search(
                 collection_name="legal_docs",
                 query_vector=query_embedding,
