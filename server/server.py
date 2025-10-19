@@ -11,13 +11,14 @@ from server.modules.pdf_text_extractor import extract_text_from_pdf  # <-- impor
 from server.modules.pdf_chunker import chunk_pdf_with_semantic       # new chunker module
 from server.modules.embed_text import embed_texts
 from server.modules.upload_qdrant import upload, query
+from server.modules.answer_generation import generate_answer
 
 # from transformers import AutoTokenizer, AutoModel
 # from langchain_experimental.text_splitter import SemanticChunker
 # from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+model = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L3-v2")
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:3001"])
@@ -92,14 +93,18 @@ def upload_pdf():
     chunks = embed_texts(chunks, model)  # embedding_model
 
     print("text embedded")
+    print("Chunks prepared for upload:")
+
+    for c in chunks:
+        filtered = {k: v for k, v in c.items() if k != "embedding"}
+        print(filtered)
 
     upload(chunks, client)
-
+    
     print("uploaded to Qdrant")
-    # chunks = chunk_pdf_with_semantic(page_texts, embedding_model)
+
     sessions[session_id]["pdf"] = {
         "pages": page_texts,
-        # "chunks": chunks
     }
 
     return jsonify({
@@ -128,17 +133,20 @@ def chat():
     print("queried Qdrant:", results)
 
     # generate response (mocked here)
+    context = "\n".join([res.payload["text"] for res in results])
+    answer = generate_answer(sanitized_message, context)
 
-    sessions[session_id]["chat"].append({"role": "user", "content": message})
 
-    # Use PDF context if available
-    pdf_context = sessions[session_id].get("pdf")
-    context_info = f" (PDF loaded with {len(pdf_context)} pages)" if pdf_context else ""
+    # sessions[session_id]["chat"].append({"role": "user", "content": message})
 
-    reply = f"Bot: You said '{message}'{context_info}"
-    sessions[session_id]["chat"].append({"role": "bot", "content": reply})
+    # # Use PDF context if available
+    # pdf_context = sessions[session_id].get("pdf")
+    # context_info = f" (PDF loaded with {len(pdf_context)} pages)" if pdf_context else ""
 
-    return jsonify({"reply": reply})
+    # reply = f"Bot: You said '{message}'{context_info}"
+    sessions[session_id]["chat"].append({"role": "bot", "content": answer})
+
+    return jsonify({"reply": answer})
 
 if __name__ == "__main__":
     app.run(debug=True, port=3000)

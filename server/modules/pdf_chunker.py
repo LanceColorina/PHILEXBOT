@@ -1,37 +1,61 @@
-# pdf_chunker.py
-from langchain_experimental.text_splitter import SemanticChunker
-from langchain_community.embeddings import HuggingFaceEmbeddings
+import re
 
-def chunk_pdf_with_semantic(page_texts, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", chunk_method="Semantic"):
+def manual_semantic_chunker(text: str, max_words: int = 100):
     """
-    Splits PDF text into semantically meaningful chunks and sanitizes PII.
+    Splits a large text into roughly semantic chunks by grouping sentences
+    until a word limit is reached.
+    """
 
+    # Split into sentences using punctuation as simple boundaries
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+
+    chunks = []
+    current_chunk = []
+    current_word_count = 0
+
+    for sentence in sentences:
+        word_count = len(sentence.split())
+
+        # If adding this sentence exceeds max_words, start a new chunk
+        if current_word_count + word_count > max_words and current_chunk:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = []
+            current_word_count = 0
+
+        current_chunk.append(sentence)
+        current_word_count += word_count
+
+    # Add remaining sentences as the last chunk
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+
+    return chunks
+
+
+def chunk_pdf_with_semantic(page_texts, chunk_method="ManualSemantic", max_words=100):
+    """
+    Splits PDF text into manually created semantic-like chunks.
+    
     Args:
         page_texts (list): [{"page": int, "text": str}, ...]
-        embedding_model: LangChain-compatible embedding model (e.g., HuggingFaceEmbeddings)
-        chunk_method (str): Label prefix for chunks (default: "Semantic")
+        chunk_method (str): Label prefix for chunks
+        max_words (int): Maximum words per chunk
 
     Returns:
         list of dicts with chunk_id, text, tokens, page, position_label
     """
-    model = HuggingFaceEmbeddings(model_name=embedding_model)
     all_chunks = []
     chunk_id = 0
 
-    chunker = SemanticChunker(model)
-
     for page_data in page_texts:
+        text = page_data["text"]
+        semantic_chunks = manual_semantic_chunker(text, max_words=max_words)
 
-        # split into semantic chunks
-        semantic_chunks = chunker.create_documents(page_data["text"])
-
-        for doc in semantic_chunks:
-            chunk_text = doc.page_content
-
+        for i, chunk_text in enumerate(semantic_chunks):
             all_chunks.append({
                 "chunk_id": chunk_id,
-                "text": chunk_text,  # sanitized text
-                "tokens": len(chunk_text.split()),  # rough token count
+                "text": chunk_text.strip(),
+                "tokens": len(chunk_text.split()),
                 "page": page_data["page"],
                 "position_label": f"{chunk_method} {chunk_id + 1} (Page {page_data['page']})",
             })
