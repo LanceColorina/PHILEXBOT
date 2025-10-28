@@ -20,3 +20,31 @@ def extract_text_from_pdf(file_bytes: bytes) -> list[dict]:
                 "text": page.get_text()
             })
     return page_texts
+
+
+def main():
+    # Ask user for PDF filename
+    file_name = input("Enter the PDF file name (e.g. sample.pdf): ").strip()
+
+    try:
+        # Read the file in binary mode
+        with open(file_name, "rb") as f:
+            file_bytes = f.read()
+
+        # Extract text from the PDF
+        results = extract_text_from_pdf(file_bytes)
+
+        # Print summary of extracted content
+        print(f"\n✅ Extracted text from {len(results)} pages.\n")
+        for page_data in results:
+            print(f"--- Page {page_data['page']} ---")
+            print(page_data['text'][:500] + ('...' if len(page_data['text']) > 500 else ''))
+            print()
+
+    except FileNotFoundError:
+        print("❌ File not found. Please make sure the file exists in this directory.")
+    except Exception as e:
+        print(f"⚠️ An error occurred: {e}")
+
+if __name__ == '__main__':
+    main()

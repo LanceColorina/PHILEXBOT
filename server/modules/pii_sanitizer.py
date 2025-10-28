@@ -41,3 +41,28 @@ class PIISanitizer:
         for key, original in self.mask_map.items():
             restored = restored.replace(f"[{key}]", original)
         return restored
+    
+
+def main():
+    print("🔍 Testing PIISanitizer module...\n")
+    sample_text = input("Enter text containing PII (e.g. 'My name is John Doe and my email is john@example.com'): ")
+
+    sanitizer = PIISanitizer()
+
+    # Sanitize input text
+    masked, mask_map = sanitizer.sanitize(sample_text)
+    print("\n✅ Masked text:")
+    print(masked)
+
+    print("\n🔒 Mask map:")
+    for k, v in mask_map.items():
+        print(f"{k}: {v}")
+
+    # Restore the original text from the masked version
+    restored = sanitizer.restore(masked)
+    print("\n♻️ Restored text:")
+    print(restored)
+
+
+if __name__ == "__main__":
+    main()
