@@ -1,0 +1,6 @@
+use python -m venv venv (if you haven't created a virtual environment yet(use it only once pls))
+
+1. use .\venv\Scripts\Activate.ps1 (to activate the virtual environment; do not skip pls)
+2. use python -m pip install -r requirements.txt (for dependencies if you haven't yet)
+3. pip install -e .
+4. pytest -s(for custom messages) or pytest -v(verbose mode) or just pytest if you don't want details
