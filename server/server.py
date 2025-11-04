@@ -134,7 +134,8 @@ def chat():
 
     # generate response (mocked here)
     context = "\n".join([res.payload["text"] for res in results])
-    answer = generate_answer(sanitized_message, context)
+    context = sanitizer.restore(context)
+    answer = generate_answer(sanitized_message, context, results=results)
 
 
     # sessions[session_id]["chat"].append({"role": "user", "content": message})
